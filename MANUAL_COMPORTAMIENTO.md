@@ -542,6 +542,12 @@ Identificador: `boundary`. Pose: `idle`. Gesto: Te mira con calma e inclina la c
 - «Mis gestos y frases son parte de este recuerdo.»
 - «Este rinconcito es una representación cariñosa.»
 
+### Lanzamiento hacia diferentes lugares
+
+La persona puede tocar una zona libre del rincón para dirigir la pelota a ese punto. También dispone de Izquierda, Centro y Derecha, accesibles con teclado. El botón Lanzar elige una posición horizontal variable. La trayectoria y el desplazamiento del perrito se calculan según el tamaño real de la escena, con límites para mantener la pelota dentro. Durante la búsqueda se bloquea otro lanzamiento; los gestos permiten cambiar de actividad. El personaje regresa a su posición inicial.
+
+El encuadre SVG incluye además un clipPath rectangular explícito: el viewBox por sí solo puede mostrar partes vecinas en las bandas libres de una ventana con proporción distinta.
+
 ## 22. Relación con el código
 
 - dist/behavior.js: catálogo, normalización, clasificación, continuación, selección y reposo.
