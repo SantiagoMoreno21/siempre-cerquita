@@ -1,0 +1,2 @@
+# Dirección visual aprobada
+Experiencia: el perro y sus reacciones lideran, controles discretos. Habitación ilustrada de luz de tarde, crema, madera y salvia. Tipografía Lora para títulos y Nunito Sans para interfaz; fuentes locales. Sin paneles de métricas, notificaciones ni rachas. La composición móvil reserva un espacio propio a la respuesta, el perro y la escritura. Paleta: papel #faf6ed, tinta #343c2d, secundario #5e654f, salvia #e6e9d9, acción #4c6046, miel #ecd3a0. Animación limitada al personaje y respuesta al tacto; respeta movimiento reducido.

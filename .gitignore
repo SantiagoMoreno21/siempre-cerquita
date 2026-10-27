@@ -1,0 +1,10 @@
+node_modules/
+.openai/
+.impeccable/
+.taste-skill/
+*.tar.gz
+*.zip
+qa/
+.env
+.env.*
+!.env.example
