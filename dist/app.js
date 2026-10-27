@@ -4,7 +4,11 @@ const companion=new Companion();
 const STORAGE='siempre-cerquita:momentos:v1';
 const message=$('message'),dog=$('dog'),form=$('chatForm');
 let current=null, saved=[], sequence=0, pending=false, voice=false, recognition=null, listening=false, voiceHadError=false;
-try{const data=JSON.parse(localStorage.getItem(STORAGE)||'[]');if(Array.isArray(data))saved=data.filter(x=>x&&typeof x.id==='string'&&typeof x.message==='string'&&typeof x.line==='string'&&typeof x.gesture==='string'&&!Number.isNaN(Date.parse(x.date))).slice(0,100);}catch{$('feedback').textContent='El guardado no está disponible. Puedes seguir usando el rincón.';}
+fetch('personal.json').then(r=>r.ok?r.json():{}).then(p=>{const text=v=>typeof v==='string'?v.trim().slice(0,40):'',list=v=>Array.isArray(v)?v.map(text).filter(Boolean).slice(0,20):[];companion.profile={duena:text(p.duena),apodos:list(p.apodos),recuerdos:list(p.recuerdos)};}).catch(()=>{});
+const WELCOMED='siempre-cerquita:bienvenida:v1';
+const isMoment=x=>x&&typeof x.id==='string'&&typeof x.message==='string'&&typeof x.line==='string'&&typeof x.gesture==='string'&&!Number.isNaN(Date.parse(x.date));
+function persist(list){try{localStorage.setItem(STORAGE,JSON.stringify(list));return true;}catch{return false;}}
+try{const data=JSON.parse(localStorage.getItem(STORAGE)||'[]');if(Array.isArray(data))saved=data.filter(isMoment).slice(0,100);}catch{$('feedback').textContent='El guardado no está disponible. Puedes seguir usando el rincón.';}
 function syncComposer(){ $('charCount').textContent=`${message.value.length} / 500`;$('sendButton').disabled=pending||listening||!message.value.trim(); }
 const FRAMES={idle:'30 0 490 724',cuddle:'550 0 480 724',play:'1030 0 545 724',sleep:'1575 0 597 724'};
 function pose(result){dog.dataset.pose=result.pose;const frame=FRAMES[result.pose];$('dogArt').setAttribute('viewBox',frame);const [x,y,width,height]=frame.split(' ');for(const [key,value]of Object.entries({x,y,width,height}))$('frameRect').setAttribute(key,value);$('mood').textContent=POSES[result.pose];$('gesture').textContent=result.gesture;$('playActivity').hidden=result.pose!=='play';$('throwZone').hidden=result.pose!=='play';$('sleepActivity').hidden=result.pose!=='sleep';}
@@ -57,22 +61,41 @@ $('saveMoment').addEventListener('click',()=>{
  if(!current||saved.some(x=>x.id===current.id))return;
  if(saved.length>=100){feedback('Ya tienes 100 momentos guardados. Descárgalos para conservar una copia.');return;}
  const next=[...saved,{...current}];
- try{localStorage.setItem(STORAGE,JSON.stringify(next));saved=next;updateCount();$('saveMoment').disabled=true;feedback('Momento guardado con cariño en este navegador.');}
- catch{feedback('No se pudo guardar. Revisa el espacio o los permisos del navegador.');}
+ if(persist(next)){saved=next;updateCount();$('saveMoment').disabled=true;feedback('Momento guardado con cariño en este navegador.');navigator.storage?.persist?.().catch(()=>{});}
+ else feedback('No se pudo guardar. Revisa el espacio o los permisos del navegador.');
 });
 function showHome(){$('rincon').hidden=false;$('moments').hidden=true;$('homeTab').classList.add('active');$('homeTab').setAttribute('aria-current','page');$('momentsTab').classList.remove('active');$('momentsTab').removeAttribute('aria-current');}
 function showMoments(){
  $('rincon').hidden=true;$('moments').hidden=false;$('homeTab').classList.remove('active');$('homeTab').removeAttribute('aria-current');$('momentsTab').classList.add('active');$('momentsTab').setAttribute('aria-current','page');
- const list=$('momentsList');list.replaceChildren();$('exportMoments').hidden=!saved.length;
+ const list=$('momentsList');list.replaceChildren();$('momentsNote').textContent='';$('exportMoments').hidden=!saved.length;
  if(!saved.length){const empty=document.createElement('div');empty.className='empty';empty.innerHTML='<svg class="paw" aria-hidden="true"><use href="#paw"/></svg><h2>Los pequeños momentos se quedan.</h2><p>Después de escribirle o acariciarlo, toca «Guardar este momento» y aparecerá aquí.</p>';list.append(empty);return;}
  for(const item of [...saved].reverse()){
   const article=document.createElement('article');article.className='moment';const time=document.createElement('time');time.dateTime=item.date;time.textContent=new Intl.DateTimeFormat('es-CO',{dateStyle:'long',timeStyle:'short'}).format(new Date(item.date));
-  const text=document.createElement('p');text.textContent=item.message;const response=document.createElement('blockquote');response.textContent=item.line||'Un gesto sin palabras.';const gesture=document.createElement('p');gesture.className='gesture';gesture.textContent=item.gesture;article.append(time,text,response,gesture);list.append(article);
+  const text=document.createElement('p');text.textContent=item.message;const response=document.createElement('blockquote');response.textContent=item.line||'Un gesto sin palabras.';const gesture=document.createElement('p');gesture.className='gesture';gesture.textContent=item.gesture;
+  const remove=document.createElement('button');remove.type='button';remove.className='text-button';remove.textContent='Quitar este momento';remove.addEventListener('click',()=>{if(!confirm('¿Quitar este momento? Si no tienes una copia descargada, no se podrá recuperar.'))return;const next=saved.filter(x=>x.id!==item.id);if(persist(next)){saved=next;updateCount();showMoments();}else feedback('No se pudo quitar. Revisa los permisos del navegador.');});
+  article.append(time,text,response,gesture,remove);list.append(article);
  }
 }
 $('homeTab').addEventListener('click',showHome);$('momentsTab').addEventListener('click',showMoments);$('backHome').addEventListener('click',()=>{showHome();$('homeTab').focus();});
 document.querySelector('.brand').addEventListener('click',showHome);
-$('exportMoments').addEventListener('click',()=>{const blob=new Blob([JSON.stringify({version:1,exportedAt:new Date().toISOString(),moments:saved},null,2)],{type:'application/json'});const url=URL.createObjectURL(blob);const a=document.createElement('a');a.href=url;a.download='nuestros-momentitos.json';a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);});
+$('exportMoments').addEventListener('click',()=>{const blob=new Blob([JSON.stringify({version:1,exportedAt:new Date().toISOString(),moments:saved},null,2)],{type:'application/json'});const url=URL.createObjectURL(blob);const a=document.createElement('a');a.href=url;a.download='nuestros-momentitos.json';a.hidden=true;document.body.append(a);a.click();setTimeout(()=>{a.remove();URL.revokeObjectURL(url);},4000);$('momentsNote').textContent='Se creó la copia «nuestros-momentitos.json». Si no la ves, revisa la carpeta de descargas de tu navegador.';});
+$('importMoments').addEventListener('click',()=>$('importFile').click());
+$('importFile').addEventListener('change',async event=>{
+ const file=event.target.files[0];event.target.value='';if(!file)return;
+ const note=$('momentsNote');
+ try{
+  if(file.size>2e6)throw new Error('size');
+  const data=JSON.parse(await file.text());const incoming=(Array.isArray(data)?data:data?.moments);
+  if(!Array.isArray(incoming))throw new Error('format');
+  const known=new Set(saved.map(x=>x.id));const fresh=incoming.filter(isMoment).filter(x=>!known.has(x.id)).map(x=>({id:x.id,message:x.message.slice(0,500),line:x.line.slice(0,500),gesture:x.gesture.slice(0,300),date:x.date,intent:typeof x.intent==='string'?x.intent:''}));
+  const room=100-saved.length,added=fresh.slice(0,Math.max(0,room));
+  if(!added.length){note.textContent=fresh.length?'Ya tienes 100 momentos guardados; no hay espacio para más.':'Esa copia no trae momentos nuevos.';return;}
+  const next=[...saved,...added].sort((a,b)=>Date.parse(a.date)-Date.parse(b.date));
+  if(!persist(next)){note.textContent='No se pudo guardar. Revisa el espacio o los permisos del navegador.';return;}
+  saved=next;updateCount();showMoments();
+  note.textContent=`Se recuperaron ${added.length} momento${added.length===1?'':'s'}${fresh.length>added.length?'; el resto no cabía en el límite de 100':''}.`;
+ }catch{note.textContent='No se pudo leer ese archivo. Elige una copia descargada desde «Descargar mis momentos».';}
+});
 const about=$('about');$('aboutButton').addEventListener('click',()=>about.showModal());for(const id of ['closeAbout','startButton'])$(id).addEventListener('click',()=>about.close());about.addEventListener('click',event=>{if(event.target===about){const rect=about.getBoundingClientRect();if(event.clientX<rect.left||event.clientX>rect.right||event.clientY<rect.top||event.clientY>rect.bottom)about.close();}});
 $('voiceButton').addEventListener('click',()=>{if(!('speechSynthesis'in window)){feedback('Este navegador no puede leer las respuestas en voz alta.');return;}voice=!voice;$('voiceButton').setAttribute('aria-pressed',String(voice));$('voiceButton').querySelector('span').textContent=`Leer respuestas: ${voice?'sí':'no'}`;if(voice&&current)read(current.line);else speechSynthesis.cancel();});
 function resetMic(){listening=false;dog.classList.remove('listening');$('micButton').setAttribute('aria-pressed','false');$('micLabel').textContent='Hablarle';syncComposer();}
@@ -92,3 +115,5 @@ $('micButton').addEventListener('click',()=>{
 document.addEventListener('visibilitychange',()=>{if(document.hidden){recognition?.abort();if('speechSynthesis'in window)speechSynthesis.cancel();}});
 setInterval(()=>{if(document.hidden||pending||listening||message.value.trim()||$('rincon').hidden)return;const rest=companion.idle();if(rest){pose(rest);$('reply').classList.add('silent');}},15000);
 updateCount();syncComposer();
+try{if(!localStorage.getItem(WELCOMED)){localStorage.setItem(WELCOMED,'1');about.showModal();}}catch{}
+if('serviceWorker'in navigator&&location.protocol!=='file:')addEventListener('load',()=>navigator.serviceWorker.register('sw.js').catch(()=>{}));

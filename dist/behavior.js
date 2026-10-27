@@ -23,6 +23,17 @@ export const BANK = {
   boundary: {pose:'idle',gesture:'Te mira con calma e inclina la cabecita.',lines:['Soy un homenaje hecho con cariño.','Mis gestos y frases son parte de este recuerdo.','Este rinconcito es una representación cariñosa.']}
 };
 
+// Frases extra fuera de BANK para no alterar el catálogo base: saludo por hora y plantillas personales.
+export const TIME_BANK = {
+  morning:['Buenos días. Mis orejitas ya despertaron.','Un bostezo de mañana y aquí estoy.','Mañana suave, mimo suave.','Qué buena hora para una caricia.'],
+  afternoon:['Buenas tardes. La luz está bonita aquí.','Una tarde para acomodarnos juntos.','La tarde pide un cariñito.','Aquí hay un rinconcito soleado para ti.'],
+  night:['Buenas noches. Bajemos el ritmo.','Hora de acomodar las patitas.','La noche se siente mejor cerquita.','Un ratito tranquilo antes de descansar.']
+};
+export const PERSONAL_BANK = {
+  greeting:['Hola, {n}. ¿Un cariñito?','{n}, qué bonito verte por aquí.','Te recibo con la colita inquieta, {n}.'],
+  affection:['Otro mimo para ti, {n}.','Aquí estoy, {n}.','Me quedo cerquita, {n}.']
+};
+
 export const normalize = text => String(text ?? '').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().replace(/[^a-z0-9¿?\s]/g,' ').replace(/\s+/g,' ').trim();
 // Orden explícito: consuelo antes de juego; negaciones antes de palabras aisladas.
 export function classify(text) {
@@ -56,9 +67,15 @@ export function classify(text) {
 export const POSES={idle:'Atento a ti',cuddle:'En modo consentido',play:'Con ganas de jugar',sleep:'Un poquito dormilón'};
 const ACTIONS={pet:'affection',play:'play',rest:'sleep',quiet:'quiet',fetch:'fetch',wake:'wake'};
 export class Companion {
-  constructor({random=Math.random,clock=()=>Date.now()}={}) {this.random=random;this.clock=clock;this.recent=[];this.energy=65;this.affection=35;this.pose='idle';this.lastInteraction=clock();this.lastIntent='greeting';this.turns=0;this.lastWasSilent=false;}
-  choose(intent) {
-    const pool=BANK[intent].lines;
+  constructor({random=Math.random,clock=()=>Date.now(),hour=()=>new Date().getHours(),profile={}}={}) {this.random=random;this.clock=clock;this.hour=hour;this.profile={duena:'',apodos:[],recuerdos:[],...profile};this.recent=[];this.energy=65;this.affection=35;this.pose='idle';this.lastInteraction=clock();this.lastIntent='greeting';this.turns=0;this.lastWasSilent=false;}
+  flavor(intent,line) {
+    const p=this.profile,names=[p.duena,...(p.apodos||[])].filter(Boolean),h=this.hour();
+    if(intent==='greeting'&&this.random()<.5){const slot=h>=5&&h<12?'morning':h>=12&&h<19?'afternoon':'night';return this.choose('time:'+slot,TIME_BANK[slot]);}
+    if(PERSONAL_BANK[intent]&&names.length&&this.random()<.35){const n=names[Math.floor(this.random()*names.length)];return this.choose('personal:'+intent,PERSONAL_BANK[intent]).replace('{n}',n);}
+    if(intent==='memory'&&p.recuerdos?.length&&this.random()<.5){const r=String(p.recuerdos[Math.floor(this.random()*p.recuerdos.length)]).slice(0,80);return `Me gusta que me cuentes: «${r}».`;}
+    return line;
+  }
+  choose(intent,pool=BANK[intent].lines) {
     let choices=pool.filter(line=>!this.recent.includes(line));
     if (!choices.length) choices=pool.filter(line=>line!==this.recent.at(-1));
     const line=choices[Math.min(choices.length-1,Math.floor(Math.max(0,this.random())*choices.length))];
@@ -90,6 +107,7 @@ export class Companion {
       const descriptions={sleep:'Descansando, con mis patitas bien acomodadas.',play:'Con mi pelota, listo para jugar.',cuddle:'Con los ojitos cerrados, disfrutando los mimos.'};
       if(descriptions[previousPose])line=descriptions[previousPose];
     }
+    if(!silent&&!['wellbeing','presence'].includes(intent))line=this.flavor(intent,line);
     return {intent,pose:this.pose,gesture:['wellbeing','presence'].includes(intent)?({sleep:'Descansa con los ojitos cerrados.',play:'Se queda listo junto a su pelota.',cuddle:'Se acomoda para otro mimo.',idle:config.gesture}[this.pose]):config.gesture,line,silent,energy:this.energy,affection:this.affection};
   }
   idle() {

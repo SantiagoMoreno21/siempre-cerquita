@@ -1,0 +1,16 @@
+{
+  "name": "Siempre cerquita",
+  "short_name": "Cerquita",
+  "description": "Un rinconcito para recordar con cariño y quedarse cerquita.",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "lang": "es",
+  "background_color": "#faf6ed",
+  "theme_color": "#faf6ed",
+  "icons": [
+    {"src": "assets/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any"},
+    {"src": "assets/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any"},
+    {"src": "assets/patita.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any"}
+  ]
+}
